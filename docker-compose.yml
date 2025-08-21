@@ -6,8 +6,7 @@ networks:
 
 volumes:
   auth_postgres_data:
-  postgres_data:
-  # feed_postgres_data:  # For future feed service
+  feed_postgres_data:  # For future feed service
 
 services:
   # Envoy Proxy - Single Gateway Entry Point
@@ -47,6 +46,8 @@ services:
   # Data Layer - Separate databases per service
   postgres_auth:
     image: postgres:17-alpine
+    ports:
+      - "5432:5432"  # Expose for migrations
     environment:
       POSTGRES_DB: auth_db
       POSTGRES_USER: auth_user
@@ -57,16 +58,18 @@ services:
       - app-net
 
   # Future: Feed service database
-  # postgres_feed:
-  #   image: postgres:17-alpine
-  #   environment:
-  #     POSTGRES_DB: feed_db
-  #     POSTGRES_USER: feed_user
-  #     POSTGRES_PASSWORD: feed_password
-  #   volumes:
-  #     - feed_postgres_data:/var/lib/postgresql/data
-  #   networks:
-  #     - app-net
+  postgres_feed:
+    image: postgres:17-alpine
+    ports:
+      - "5433:5432"  # Expose on different port to avoid conflict
+    environment:
+      POSTGRES_DB: feed_db
+      POSTGRES_USER: feed_user
+      POSTGRES_PASSWORD: feed_password
+    volumes:
+      - feed_postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-net
 
   # mongodb:
   #   image: mongo:7

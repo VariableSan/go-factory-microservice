@@ -106,6 +106,13 @@ func main() {
 		}
 	}
 
+	// Close database connection
+	if err := db.Close(); err != nil {
+		logger.Error("Failed to close database connection", "error", err)
+	} else {
+		logger.Info("Database connection closed successfully")
+	}
+
 	wg.Wait()
 	logger.Info("All servers stopped")
 }

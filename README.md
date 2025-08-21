@@ -110,13 +110,11 @@ Authentication microservice with dual interfaces:
 
 ### pkg/common
 Shared utilities including:
-- JWT authentication
-- Structured logging
-- HTTP middleware
-- Redis client
-- Database utilities
-- Error handling
-- Response formatting
+- Configuration management
+- PostgreSQL database utilities
+- Redis client wrapper
+- Standardized error types
+- HTTP response formatting
 
 ### pkg/proto
 Protocol buffer definitions for inter-service communication.

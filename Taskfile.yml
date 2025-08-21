@@ -20,7 +20,7 @@ tasks:
     cmds:
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
       - go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
   generate-proto:
     desc: Generate Go code from all proto files
@@ -137,3 +137,109 @@ tasks:
       - go fmt ./...
       - for: { var: SERVICES }
         cmd: cd services/{{.ITEM}} && go fmt ./...
+
+  # Database Migrations
+  migrate-up:
+    desc: Run all migrations up for all services
+    cmds:
+      - task: migrate-up-auth
+
+  migrate-up-auth:
+    desc: Run migrations up for auth service
+    env:
+      AUTH_DATABASE_URL: postgres://auth_user:auth_password@localhost:5432/auth_db?sslmode=disable
+    cmds:
+      - migrate -path services/auth/migrations -database "{{.AUTH_DATABASE_URL}}" up
+
+  migrate-up-feed:
+    desc: Run migrations up for feed service  
+    env:
+      FEED_DATABASE_URL: postgres://feed_user:feed_password@localhost:5433/feed_db?sslmode=disable
+    cmds:
+      - migrate -path services/feed/migrations -database "{{.FEED_DATABASE_URL}}" up
+
+  migrate-up-service:
+    desc: Run migrations up for a specific service
+    vars: { SERVICE: "" }
+    cmds:
+      - |
+        {{if eq .SERVICE "auth"}}
+        migrate -path services/auth/migrations -database "$env:AUTH_DATABASE_URL" up
+        {{else if eq .SERVICE "feed"}}
+        migrate -path services/feed/migrations -database "$env:FEED_DATABASE_URL" up
+        {{else}}
+        Write-Host "Unknown service: {{.SERVICE}}" && exit 1
+        {{end}}
+
+  migrate-down:
+    desc: Run all migrations down for all services
+    cmds:
+      - task: migrate-down-auth
+
+  migrate-down-auth:
+    desc: Run migrations down for auth service
+    env:
+      AUTH_DATABASE_URL: postgres://auth_user:auth_password@localhost:5432/auth_db?sslmode=disable
+    cmds:
+      - migrate -path services/auth/migrations -database "{{.AUTH_DATABASE_URL}}" down
+
+  migrate-down-feed:
+    desc: Run migrations down for feed service
+    env:
+      FEED_DATABASE_URL: postgres://feed_user:feed_password@localhost:5433/feed_db?sslmode=disable
+    cmds:
+      - migrate -path services/feed/migrations -database "{{.FEED_DATABASE_URL}}" down
+
+  migrate-down-service:
+    desc: Run migrations down for a specific service
+    vars: { SERVICE: "" }
+    cmds:
+      - |
+        {{if eq .SERVICE "auth"}}
+        migrate -path services/auth/migrations -database "$env:AUTH_DATABASE_URL" down
+        {{else if eq .SERVICE "feed"}}
+        migrate -path services/feed/migrations -database "$env:FEED_DATABASE_URL" down
+        {{else}}
+        Write-Host "Unknown service: {{.SERVICE}}" && exit 1
+        {{end}}
+
+  migrate-create-auth:
+    desc: Create a new migration file for auth service
+    vars: { NAME: "" }
+    cmds:
+      - migrate create -ext sql -dir services/auth/migrations -seq {{.NAME}}
+
+  migrate-create-feed:
+    desc: Create a new migration file for feed service  
+    vars: { NAME: "" }
+    cmds:
+      - migrate create -ext sql -dir services/feed/migrations -seq {{.NAME}}
+
+  migrate-force:
+    desc: Force set migration version for a service
+    vars: 
+      SERVICE: ""
+      VERSION: ""
+    cmds:
+      - |
+        {{if eq .SERVICE "auth"}}
+        migrate -path services/auth/migrations -database "$env:AUTH_DATABASE_URL" force {{.VERSION}}
+        {{else if eq .SERVICE "feed"}}
+        migrate -path services/feed/migrations -database "$env:FEED_DATABASE_URL" force {{.VERSION}}
+        {{else}}
+        Write-Host "Unknown service: {{.SERVICE}}" && exit 1
+        {{end}}
+
+  migrate-version-auth:
+    desc: Check migration version for auth service
+    env:
+      AUTH_DATABASE_URL: postgres://auth_user:auth_password@localhost:5432/auth_db?sslmode=disable
+    cmds:
+      - migrate -path services/auth/migrations -database "{{.AUTH_DATABASE_URL}}" version
+
+  migrate-version-feed:
+    desc: Check migration version for feed service
+    env:
+      FEED_DATABASE_URL: postgres://feed_user:feed_password@localhost:5433/feed_db?sslmode=disable
+    cmds:
+      - migrate -path services/feed/migrations -database "{{.FEED_DATABASE_URL}}" version
