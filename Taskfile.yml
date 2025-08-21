@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-  SERVICES: gateway auth
+  SERVICES: auth
 
 tasks:
   default:

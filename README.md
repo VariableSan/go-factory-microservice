@@ -1,9 +1,9 @@
-# Go-Factory Microservice
+# Go Microservices with Envoy Gateway
 
-Monorepo workspace for scalable Go microservices.  
-This snapshot includes:
-- gateway — HTTP entrypoint & reverse proxy
-- auth — gRPC authentication service
+Monorepo workspace for scalable Go microservices with Envoy proxy.  
+This implementation includes:
+- **Envoy Proxy** — Industry-standard API Gateway
+- **Auth Service** — Go microservice with HTTP REST and gRPC interfaces
 
 ## Project Structure
 
@@ -16,7 +16,10 @@ This snapshot includes:
 │   └── proto/                # Protocol buffer definitions
 └── services/
     ├── auth/                 # Authentication service
-    └── gateway/              # API Gateway service
+    └── gateway/              # Envoy proxy configuration
+        ├── config/
+        │   └── envoy.yaml    # Envoy configuration
+        └── Dockerfile.envoy  # Envoy container build
 ```
 
 ## Getting Started
@@ -80,13 +83,28 @@ This snapshot includes:
 - `task clean-build` - Clean build artifacts only
 - `task clean-docker` - Stop containers and remove volumes
 
+## Architecture
+
+```
+Client → Envoy Proxy (8080) → Auth Service (HTTP 8081 / gRPC 9090)
+                     ↓
+              Admin Interface (9901)
+```
+
 ## Services
 
-### Gateway Service (Port 8080)
-HTTP API Gateway that routes requests to appropriate microservices.
+### Envoy Gateway (Port 8080)
+Industry-standard proxy serving as the API Gateway:
+- Direct routing to microservices
+- Load balancing and health checks
+- CORS and gRPC-Web support
+- Admin interface on port 9901
 
-### Auth Service (Port 9090)
-gRPC authentication service providing user management and JWT tokens.
+### Auth Service (Ports 8081/9090)
+Authentication microservice with dual interfaces:
+- HTTP REST API (port 8081) - User registration, login, profile
+- gRPC service (port 9090) - Inter-service communication
+- JWT token management with Redis session store
 
 ## Common Packages
 
