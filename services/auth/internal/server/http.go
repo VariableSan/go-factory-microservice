@@ -156,7 +156,7 @@ func (s *HTTPServer) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newToken, newRefreshToken, err := s.authService.RefreshToken(r.Context(), req.RefreshToken)
+	newToken, err := s.authService.RefreshToken(r.Context(), req.RefreshToken)
 	if err != nil {
 		s.logger.Error("Token refresh failed", "error", err)
 		response.Unauthorized(w, err.Error())
@@ -165,14 +165,14 @@ func (s *HTTPServer) refreshToken(w http.ResponseWriter, r *http.Request) {
 
 	response.SuccessWithMessage(w, map[string]interface{}{
 		"token":         newToken,
-		"refresh_token": newRefreshToken,
+		"refresh_token": req.RefreshToken, // Keep the same refresh token
 	}, "Token refreshed successfully")
 }
 
 func (s *HTTPServer) getProfile(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(string)
 	
-	user, err := s.authService.GetUserProfile(r.Context(), userID)
+	user, err := s.authService.GetProfile(r.Context(), userID)
 	if err != nil {
 		s.logger.Error("Get profile failed", "error", err, "userID", userID)
 		response.Error(w, err)
@@ -196,7 +196,7 @@ func (s *HTTPServer) validateToken(w http.ResponseWriter, r *http.Request) {
 		token = token[7:]
 	}
 
-	user, roles, err := s.authService.ValidateToken(r.Context(), token)
+	user, err := s.authService.ValidateToken(r.Context(), token)
 	if err != nil {
 		response.Error(w, err)
 		return
@@ -204,7 +204,7 @@ func (s *HTTPServer) validateToken(w http.ResponseWriter, r *http.Request) {
 
 	response.SuccessWithMessage(w, map[string]interface{}{
 		"user":  convertToUserResponse(user),
-		"roles": roles,
+		"roles": []string{}, // No roles in simplified model
 	}, "Token is valid")
 }
 
@@ -235,7 +235,7 @@ func convertToUserResponse(user *service.User) *UserResponse {
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
-		Roles:     user.Roles,
+		Roles:     []string{}, // No roles in simplified model
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Active:    user.Active,

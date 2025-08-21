@@ -5,7 +5,9 @@ networks:
     driver: bridge
 
 volumes:
+  auth_postgres_data:
   postgres_data:
+  # feed_postgres_data:  # For future feed service
 
 services:
   # Envoy Proxy - Single Gateway Entry Point
@@ -32,27 +34,39 @@ services:
       HTTP_PORT: "8081"
       GRPC_PORT: "9090"
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
-      DATABASE_URL: postgres://user:password@postgres:5432/auth_db?sslmode=disable
+      AUTH_DATABASE_URL: postgres://auth_user:auth_password@postgres_auth:5432/auth_db?sslmode=disable
       REDIS_URL: redis://redis:6379
       JAEGER_ENDPOINT: jaeger:14268
     depends_on:
-      - postgres
+      - postgres_auth
       - redis
       - jaeger
     networks:
       - app-net
 
-  # Data Layer  
-  postgres:
+  # Data Layer - Separate databases per service
+  postgres_auth:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: auth_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - auth_postgres_data:/var/lib/postgresql/data
     networks:
       - app-net
+
+  # Future: Feed service database
+  # postgres_feed:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_DB: feed_db
+  #     POSTGRES_USER: feed_user
+  #     POSTGRES_PASSWORD: feed_password
+  #   volumes:
+  #     - feed_postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - app-net
 
   # mongodb:
   #   image: mongo:7

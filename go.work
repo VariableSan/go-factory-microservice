@@ -3,6 +3,5 @@ go 1.25.0
 use (
 	./pkg/common
 	./pkg/proto
-	./services/gateway
 	./services/auth
 )

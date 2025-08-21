@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 // Config holds common configuration values
@@ -44,6 +45,51 @@ func LoadDatabaseConfig() *DatabaseConfig {
 		MaxConnections:  maxConn,
 		MaxIdleTime:     maxIdle,
 		ConnMaxLifetime: maxLifetime,
+	}
+}
+
+// AuthConfig holds auth-specific configuration
+type AuthConfig struct {
+	JWTSecret      string
+	HTTPPort       string
+	GRPCPort       string
+	DatabaseURL    string
+	RedisURL       string
+	TokenExpiry    time.Duration
+	RefreshExpiry  time.Duration
+}
+
+// LoadAuthConfig loads auth service specific configuration
+func LoadAuthConfig() *AuthConfig {
+	tokenExpiry, _ := time.ParseDuration(getEnv("JWT_ACCESS_TOKEN_EXPIRY", "15m"))
+	refreshExpiry, _ := time.ParseDuration(getEnv("JWT_REFRESH_TOKEN_EXPIRY", "7d"))
+
+	return &AuthConfig{
+		JWTSecret:     getEnv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production"),
+		HTTPPort:      getEnv("HTTP_PORT", "8081"),
+		GRPCPort:      getEnv("GRPC_PORT", "9090"),
+		DatabaseURL:   getEnv("AUTH_DATABASE_URL", getEnv("DATABASE_URL", "")),
+		RedisURL:      getEnv("REDIS_URL", "redis://localhost:6379"),
+		TokenExpiry:   tokenExpiry,
+		RefreshExpiry: refreshExpiry,
+	}
+}
+
+// FeedConfig holds feed-specific configuration (for future use)
+type FeedConfig struct {
+	HTTPPort       string
+	GRPCPort       string
+	DatabaseURL    string
+	RedisURL       string
+}
+
+// LoadFeedConfig loads feed service specific configuration
+func LoadFeedConfig() *FeedConfig {
+	return &FeedConfig{
+		HTTPPort:    getEnv("HTTP_PORT", "8083"),
+		GRPCPort:    getEnv("GRPC_PORT", "9091"),
+		DatabaseURL: getEnv("FEED_DATABASE_URL", getEnv("DATABASE_URL", "")),
+		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/VariableSan/go-factory-microservice/pkg/common/config"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/database"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/redis"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/server"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
@@ -19,20 +20,22 @@ import (
 func main() {
 	logger := slog.Default()
 
-	// Load configuration
-	cfg := config.LoadConfig()
+	// Load auth-specific configuration
+	authCfg := config.LoadAuthConfig()
 
-	// JWT Secret
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "your-super-secret-jwt-key-change-this-in-production"
+	// Initialize database connection
+	db, err := database.NewFromURL(authCfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
+	defer db.Close()
+	
+	logger.Info("Connected to database successfully")
 
 	// Initialize Redis client
 	var redisClient *redis.Client
-	if cfg.RedisURL != "" {
-		var err error
-		redisClient, err = redis.NewClientFromURL(cfg.RedisURL)
+	if authCfg.RedisURL != "" {
+		redisClient, err = redis.NewClientFromURL(authCfg.RedisURL)
 		if err != nil {
 			logger.Warn("Failed to connect to Redis", "error", err)
 		} else {
@@ -41,21 +44,11 @@ func main() {
 	}
 
 	// Initialize auth service
-	authService := service.NewAuthService(jwtSecret, redisClient)
+	authService := service.NewAuthService(db, authCfg.JWTSecret, redisClient, authCfg.TokenExpiry, authCfg.RefreshExpiry)
 
 	// Create servers
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "8081"
-	}
-
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "9090"
-	}
-
-	httpServer := server.NewHTTPServer(authService, httpPort, jwtSecret)
-	grpcServer, err := server.NewGRPCServer(authService, grpcPort)
+	httpServer := server.NewHTTPServer(authService, authCfg.HTTPPort, authCfg.JWTSecret)
+	grpcServer, err := server.NewGRPCServer(authService, authCfg.GRPCPort)
 	if err != nil {
 		log.Fatalf("Failed to create gRPC server: %v", err)
 	}
@@ -67,7 +60,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logger.Info("Starting HTTP server", "port", httpPort)
+		logger.Info("Starting HTTP server", "port", authCfg.HTTPPort)
 		if err := httpServer.Start(); err != nil {
 			logger.Error("HTTP server failed", "error", err)
 		}
@@ -77,7 +70,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		logger.Info("Starting gRPC server", "port", grpcPort)
+		logger.Info("Starting gRPC server", "port", authCfg.GRPCPort)
 		if err := grpcServer.Start(); err != nil {
 			logger.Error("gRPC server failed", "error", err)
 		}

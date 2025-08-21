@@ -112,7 +112,7 @@ func (s *AuthGRPCServer) Register(ctx context.Context, req *authpb.RegisterReque
 }
 
 func (s *AuthGRPCServer) ValidateToken(ctx context.Context, req *authpb.ValidateTokenRequest) (*authpb.ValidateTokenResponse, error) {
-	user, roles, err := s.authService.ValidateToken(ctx, req.Token)
+	user, err := s.authService.ValidateToken(ctx, req.Token)
 	if err != nil {
 		return &authpb.ValidateTokenResponse{
 			Valid:   false,
@@ -123,13 +123,13 @@ func (s *AuthGRPCServer) ValidateToken(ctx context.Context, req *authpb.Validate
 	return &authpb.ValidateTokenResponse{
 		Valid:   true,
 		User:    convertToProtoUser(user),
-		Roles:   roles,
+		Roles:   []string{}, // No roles in simplified model
 		Message: "Token is valid",
 	}, nil
 }
 
 func (s *AuthGRPCServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenRequest) (*authpb.RefreshTokenResponse, error) {
-	newToken, newRefreshToken, err := s.authService.RefreshToken(ctx, req.RefreshToken)
+	newToken, err := s.authService.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return &authpb.RefreshTokenResponse{
 			Success: false,
@@ -140,13 +140,13 @@ func (s *AuthGRPCServer) RefreshToken(ctx context.Context, req *authpb.RefreshTo
 	return &authpb.RefreshTokenResponse{
 		Success:      true,
 		Token:        newToken,
-		RefreshToken: newRefreshToken,
+		RefreshToken: req.RefreshToken, // Keep the same refresh token
 		Message:      "Token refreshed successfully",
 	}, nil
 }
 
 func (s *AuthGRPCServer) GetUserProfile(ctx context.Context, req *authpb.GetUserProfileRequest) (*authpb.GetUserProfileResponse, error) {
-	user, err := s.authService.GetUserProfile(ctx, req.UserId)
+	user, err := s.authService.GetProfile(ctx, req.UserId)
 	if err != nil {
 		return &authpb.GetUserProfileResponse{
 			Success: false,
@@ -171,7 +171,7 @@ func convertToProtoUser(user *service.User) *authpb.User {
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
-		Roles:     user.Roles,
+		Roles:     []string{}, // No roles in simplified model
 		CreatedAt: user.CreatedAt.Unix(),
 		UpdatedAt: user.UpdatedAt.Unix(),
 		Active:    user.Active,
