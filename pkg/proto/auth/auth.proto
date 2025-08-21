@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/VariableSan/go-factory-microservice/pkg/proto/auth";
+
+// AuthService provides authentication functionality
+service AuthService {
+  // Login authenticates a user and returns a token
+  rpc Login(LoginRequest) returns (LoginResponse);
+  
+  // ValidateToken validates a JWT token
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // RefreshToken refreshes an existing token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // Register creates a new user account
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // GetUserProfile retrieves user profile information
+  rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+}
+
+// Login request
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// Login response
+message LoginResponse {
+  bool success = 1;
+  string token = 2;
+  string refresh_token = 3;
+  User user = 4;
+  string message = 5;
+}
+
+// Token validation request
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+// Token validation response
+message ValidateTokenResponse {
+  bool valid = 1;
+  User user = 2;
+  repeated string roles = 3;
+  string message = 4;
+}
+
+// Token refresh request
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// Token refresh response
+message RefreshTokenResponse {
+  bool success = 1;
+  string token = 2;
+  string refresh_token = 3;
+  string message = 4;
+}
+
+// User registration request
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+// User registration response
+message RegisterResponse {
+  bool success = 1;
+  User user = 2;
+  string message = 3;
+}
+
+// Get user profile request
+message GetUserProfileRequest {
+  string user_id = 1;
+}
+
+// Get user profile response
+message GetUserProfileResponse {
+  bool success = 1;
+  User user = 2;
+  string message = 3;
+}
+
+// User represents a user entity
+message User {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  repeated string roles = 5;
+  int64 created_at = 6;
+  int64 updated_at = 7;
+  bool active = 8;
+}

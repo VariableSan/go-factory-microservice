@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/VariableSan/go-factory-microservice/pkg/proto/common";
+
+// Empty message for RPCs that don't need request/response data
+message Empty {}
+
+// Generic response with status and message
+message Response {
+  bool success = 1;
+  string message = 2;
+  map<string, string> metadata = 3;
+}
+
+// Error details
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  string field = 3;
+}
+
+// Pagination request
+message PaginationRequest {
+  int32 page = 1;      // Page number (1-based)
+  int32 page_size = 2; // Number of items per page
+  string sort_by = 3;  // Field to sort by
+  string sort_order = 4; // "asc" or "desc"
+}
+
+// Pagination response metadata
+message PaginationResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total_items = 3;
+  int32 total_pages = 4;
+  bool has_next = 5;
+  bool has_prev = 6;
+}
+
+// Health check request
+message HealthCheckRequest {
+  string service = 1;
+}
+
+// Health check response
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3; // Used only by the Watch method.
+  }
+  ServingStatus status = 1;
+  string message = 2;
+  map<string, string> details = 3;
+}
+
+// Generic filter for queries
+message Filter {
+  string field = 1;
+  string operator = 2; // eq, ne, gt, gte, lt, lte, in, like
+  repeated string values = 3;
+}
+
+// Generic sort specification
+message Sort {
+  string field = 1;
+  string order = 2; // asc, desc
+}
+
+// Generic list request
+message ListRequest {
+  repeated Filter filters = 1;
+  repeated Sort sorts = 2;
+  PaginationRequest pagination = 3;
+}
+
+// Timestamp message
+message Timestamp {
+  int64 seconds = 1;
+  int32 nanos = 2;
+}

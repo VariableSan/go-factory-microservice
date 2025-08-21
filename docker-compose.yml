@@ -1,0 +1,114 @@
+version: '3.8'
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+  # Core Services
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SERVICE_URL: auth:9090
+      REDIS_URL: redis:6379
+      JAEGER_ENDPOINT: jaeger:14268
+    depends_on:
+      - auth
+      - redis
+      - jaeger
+    networks:
+      - app-net
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      DATABASE_URL: postgres://user:password@postgres:5432/auth_db?sslmode=disable
+      REDIS_URL: redis:6379
+      JAEGER_ENDPOINT: jaeger:14268
+    depends_on:
+      - postgres
+      - redis
+      - jaeger
+    networks:
+      - app-net
+
+  # Data Layer  
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-net
+
+  # mongodb:
+  #   image: mongo:7
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: admin
+  #     MONGO_INITDB_ROOT_PASSWORD: password
+  #   networks:
+  #     - app-net
+
+  redis:
+    image: redis:8-alpine
+    networks:
+      - app-net
+
+  # Messaging
+  # kafka:
+  #   image: confluentinc/cp-kafka:latest
+  #   depends_on:
+  #     - zookeeper
+  #   networks:
+  #     - app-net
+
+  # Observability Stack
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   volumes:
+  #     - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   networks:
+  #     - app-net
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   environment:
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #   networks:
+  #     - app-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - app-net
+  # elasticsearch:
+  #   image: elasticsearch:9.1.2
+  #   environment:
+  #     - discovery.type=single-node
+  #   networks:
+  #     - app-net
+
+  # kibana:
+  #   image: kibana:9.1.2
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - app-net

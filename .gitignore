@@ -28,3 +28,5 @@
 node_modules
 /shared/api/bundles/
 /coverage/
+
+summary.md
