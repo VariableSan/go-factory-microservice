@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-  SERVICES: auth
+  SERVICES: auth feed
 
 tasks:
   default:
@@ -137,3 +137,59 @@ tasks:
       - go fmt ./...
       - for: { var: SERVICES }
         cmd: cd services/{{.ITEM}} && go fmt ./...
+
+  # Migration tasks
+  migrate-auth-up:
+    desc: Run auth service migrations up (loads .env.local)
+    dir: services/auth
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=up
+
+  migrate-auth-down:
+    desc: Run auth service migrations down (loads .env.local)
+    dir: services/auth
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=down
+
+  migrate-auth-drop:
+    desc: Drop all auth service tables (loads .env.local)
+    dir: services/auth
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=drop
+
+  migrate-feed-up:
+    desc: Run feed service migrations up (loads .env.local)
+    dir: services/feed
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=up
+
+  migrate-feed-down:
+    desc: Run feed service migrations down (loads .env.local)
+    dir: services/feed  
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=down
+
+  migrate-feed-drop:
+    desc: Drop all feed service tables (loads .env.local)
+    dir: services/feed
+    dotenv: ['../../.env.local']
+    cmds:
+      - go run -tags migrate cmd/migrate.go -direction=drop
+
+  # Migrate all services
+  migrate-all-up:
+    desc: Run migrations up for all services
+    cmds:
+      - task: migrate-auth-up
+      - task: migrate-feed-up
+
+  migrate-all-down:
+    desc: Run migrations down for all services
+    cmds:
+      - task: migrate-feed-down
+      - task: migrate-auth-down

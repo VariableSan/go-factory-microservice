@@ -9,6 +9,7 @@ import (
 
 	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/response"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/tracing"
 	authMiddleware "github.com/VariableSan/go-factory-microservice/services/auth/internal/middleware"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -17,10 +18,11 @@ import (
 )
 
 type HTTPServer struct {
-	server      *http.Server
-	authService *service.AuthService
-	logger      *logger.Logger
-	jwtSecret   string
+	server         *http.Server
+	authService    *service.AuthService
+	logger         *logger.Logger
+	jwtSecret      string
+	tracingManager *tracing.TracingManager
 }
 
 type LoginRequest struct {
@@ -50,7 +52,7 @@ type UserResponse struct {
 	Active    bool      `json:"active"`
 }
 
-func NewHTTPServer(authService *service.AuthService, port, jwtSecret string, logger *logger.Logger) *HTTPServer {	
+func NewHTTPServer(authService *service.AuthService, port, jwtSecret string, logger *logger.Logger, tracingManager *tracing.TracingManager) *HTTPServer {	
 	r := chi.NewRouter()
 	
 	// Middleware
@@ -59,6 +61,11 @@ func NewHTTPServer(authService *service.AuthService, port, jwtSecret string, log
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
+	
+	// Add tracing middleware if tracing is available
+	if tracingManager != nil {
+		r.Use(tracingManager.HTTPMiddleware())
+	}
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
@@ -71,9 +78,10 @@ func NewHTTPServer(authService *service.AuthService, port, jwtSecret string, log
 	}))
 
 	httpServer := &HTTPServer{
-		authService: authService,
-		logger:      logger.WithComponent("http-server"),
-		jwtSecret:   jwtSecret,
+		authService:    authService,
+		logger:         logger.WithComponent("http-server"),
+		jwtSecret:      jwtSecret,
+		tracingManager: tracingManager,
 		server: &http.Server{
 			Addr:         ":" + port,
 			Handler:      r,

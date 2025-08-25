@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/tracing"
 	authpb "github.com/VariableSan/go-factory-microservice/pkg/proto/auth"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
 	"google.golang.org/grpc"
@@ -14,13 +15,14 @@ import (
 )
 
 type GRPCServer struct {
-	server      *grpc.Server
-	listener    net.Listener
-	authService *service.AuthService
-	logger      *logger.Logger
+	server         *grpc.Server
+	listener       net.Listener
+	authService    *service.AuthService
+	logger         *logger.Logger
+	tracingManager *tracing.TracingManager
 }
 
-func NewGRPCServer(authService *service.AuthService, port string, logger *logger.Logger) (*GRPCServer, error) {
+func NewGRPCServer(authService *service.AuthService, port string, logger *logger.Logger, tracingManager *tracing.TracingManager) (*GRPCServer, error) {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return nil, err
@@ -45,10 +47,11 @@ func NewGRPCServer(authService *service.AuthService, port string, logger *logger
 	reflection.Register(server)
 
 	return &GRPCServer{
-		server:      server,
-		listener:    lis,
-		authService: authService,
-		logger:      logger.WithComponent("grpc-server"),
+		server:         server,
+		listener:       lis,
+		authService:    authService,
+		logger:         logger.WithComponent("grpc-server"),
+		tracingManager: tracingManager,
 	}, nil
 }
 

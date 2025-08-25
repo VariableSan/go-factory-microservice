@@ -19,6 +19,13 @@
 
 # env file
 .env
+.env.local
+.env.production  
+.env.staging
+
+# But keep the template files
+!.env.example
+
 /.idea
 /.vscode
 /.cursor

@@ -13,6 +13,7 @@ import (
 	"github.com/VariableSan/go-factory-microservice/pkg/common/database"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/redis"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/tracing"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/server"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
 )
@@ -40,6 +41,28 @@ func main() {
 
 	logger.Info("Connected to database successfully")
 
+	// Initialize tracing
+	var tracingManager *tracing.TracingManager
+	if commonCfg.JaegerURL != "" {
+		var err error
+		tracingManager, err = tracing.NewTracingManager(tracing.Config{
+			ServiceName:    "auth-service",
+			ServiceVersion: "1.0.0",
+			Environment:    commonCfg.Environment,
+			JaegerURL:      commonCfg.JaegerURL,
+			Logger:         logger,
+		})
+		if err != nil {
+			logger.Warn("Failed to initialize tracing, using no-op tracer", "error", err)
+			tracingManager = tracing.NoOpTracingManager(logger)
+		} else {
+			logger.Info("Tracing initialized successfully", "jaeger_url", commonCfg.JaegerURL)
+		}
+	} else {
+		logger.Info("Jaeger URL not provided, using no-op tracer")
+		tracingManager = tracing.NoOpTracingManager(logger)
+	}
+
 	// Initialize Redis client
 	var redisClient *redis.Client
 	if authCfg.RedisURL != "" {
@@ -55,8 +78,8 @@ func main() {
 	authService := service.NewAuthService(db, authCfg.JWTSecret, redisClient, authCfg.TokenExpiry, authCfg.RefreshExpiry, logger)
 
 	// Create servers
-	httpServer := server.NewHTTPServer(authService, authCfg.HTTPPort, authCfg.JWTSecret, logger)
-	grpcServer, err := server.NewGRPCServer(authService, authCfg.GRPCPort, logger)
+	httpServer := server.NewHTTPServer(authService, authCfg.HTTPPort, authCfg.JWTSecret, logger, tracingManager)
+	grpcServer, err := server.NewGRPCServer(authService, authCfg.GRPCPort, logger, tracingManager)
 	if err != nil {
 		log.Fatalf("Failed to create gRPC server: %v", err)
 	}
@@ -111,6 +134,15 @@ func main() {
 	if redisClient != nil {
 		if err := redisClient.Close(); err != nil {
 			logger.Error("Failed to close Redis connection", "error", err)
+		}
+	}
+
+	// Shutdown tracing
+	if tracingManager != nil {
+		tracingCtx, tracingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer tracingCancel()
+		if err := tracingManager.Shutdown(tracingCtx); err != nil {
+			logger.Error("Failed to shutdown tracing", "error", err)
 		}
 	}
 
