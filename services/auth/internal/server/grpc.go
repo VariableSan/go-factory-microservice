@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
-	"log/slog"
 	"net"
 
+	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	authpb "github.com/VariableSan/go-factory-microservice/pkg/proto/auth"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
 	"google.golang.org/grpc"
@@ -17,12 +17,10 @@ type GRPCServer struct {
 	server      *grpc.Server
 	listener    net.Listener
 	authService *service.AuthService
-	logger      *slog.Logger
+	logger      *logger.Logger
 }
 
-func NewGRPCServer(authService *service.AuthService, port string) (*GRPCServer, error) {
-	logger := slog.Default()
-	
+func NewGRPCServer(authService *service.AuthService, port string, logger *logger.Logger) (*GRPCServer, error) {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return nil, err
@@ -34,7 +32,7 @@ func NewGRPCServer(authService *service.AuthService, port string) (*GRPCServer, 
 	// Register auth service
 	authServer := &AuthGRPCServer{
 		authService: authService,
-		logger:      logger,
+		logger:      logger.WithComponent("grpc-server"),
 	}
 	authpb.RegisterAuthServiceServer(server, authServer)
 
@@ -50,7 +48,7 @@ func NewGRPCServer(authService *service.AuthService, port string) (*GRPCServer, 
 		server:      server,
 		listener:    lis,
 		authService: authService,
-		logger:      logger,
+		logger:      logger.WithComponent("grpc-server"),
 	}, nil
 }
 
@@ -68,12 +66,12 @@ func (s *GRPCServer) Stop() {
 type AuthGRPCServer struct {
 	authpb.UnimplementedAuthServiceServer
 	authService *service.AuthService
-	logger      *slog.Logger
+	logger      *logger.Logger
 }
 
 func (s *AuthGRPCServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
 	s.logger.Info("Login request", "email", req.Email)
-	
+
 	user, token, refreshToken, err := s.authService.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		s.logger.Error("Login failed", "error", err)
@@ -94,7 +92,7 @@ func (s *AuthGRPCServer) Login(ctx context.Context, req *authpb.LoginRequest) (*
 
 func (s *AuthGRPCServer) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.RegisterResponse, error) {
 	s.logger.Info("Register request", "email", req.Email)
-	
+
 	user, err := s.authService.Register(ctx, req.Email, req.Password, req.FirstName, req.LastName)
 	if err != nil {
 		s.logger.Error("Registration failed", "error", err)
@@ -165,7 +163,7 @@ func convertToProtoUser(user *service.User) *authpb.User {
 	if user == nil {
 		return nil
 	}
-	
+
 	return &authpb.User{
 		Id:        user.ID,
 		Email:     user.Email,

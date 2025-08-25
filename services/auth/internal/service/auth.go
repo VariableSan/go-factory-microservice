@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/VariableSan/go-factory-microservice/pkg/common/database"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/redis"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
@@ -36,7 +36,7 @@ type AuthService struct {
 	userRepo      *repository.UserRepository
 	jwtSecret     string
 	redisClient   *redis.Client
-	logger        *slog.Logger
+	logger        *logger.Logger
 	tokenExpiry   time.Duration
 	refreshExpiry time.Duration
 }
@@ -47,22 +47,16 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewAuthService(db *database.DB, jwtSecret string, redisClient *redis.Client, tokenExpiry, refreshExpiry time.Duration) *AuthService {
+func NewAuthService(db *database.DB, jwtSecret string, redisClient *redis.Client, tokenExpiry, refreshExpiry time.Duration, logger *logger.Logger) *AuthService {
 	userRepo := repository.NewUserRepository(db)
-	
+
 	service := &AuthService{
 		userRepo:      userRepo,
 		jwtSecret:     jwtSecret,
 		redisClient:   redisClient,
-		logger:        slog.Default(),
+		logger:        logger.WithComponent("auth-service"),
 		tokenExpiry:   tokenExpiry,
 		refreshExpiry: refreshExpiry,
-	}
-
-	// Initialize database tables
-	ctx := context.Background()
-	if err := userRepo.CreateTable(ctx); err != nil {
-		service.logger.Error("Failed to create user table", "error", err)
 	}
 
 	return service
@@ -228,7 +222,7 @@ func (s *AuthService) Health() error {
 	if err := s.userRepo.DB.Health(); err != nil {
 		return fmt.Errorf("database health check failed: %w", err)
 	}
-	
+
 	// Check Redis connection if available
 	if s.redisClient != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -237,7 +231,7 @@ func (s *AuthService) Health() error {
 			s.logger.Warn("Redis health check failed", "error", err)
 		}
 	}
-	
+
 	return nil
 }
 

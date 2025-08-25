@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/response"
 	authMiddleware "github.com/VariableSan/go-factory-microservice/services/auth/internal/middleware"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
@@ -19,7 +19,7 @@ import (
 type HTTPServer struct {
 	server      *http.Server
 	authService *service.AuthService
-	logger      *slog.Logger
+	logger      *logger.Logger
 	jwtSecret   string
 }
 
@@ -50,9 +50,7 @@ type UserResponse struct {
 	Active    bool      `json:"active"`
 }
 
-func NewHTTPServer(authService *service.AuthService, port, jwtSecret string) *HTTPServer {
-	logger := slog.Default()
-	
+func NewHTTPServer(authService *service.AuthService, port, jwtSecret string, logger *logger.Logger) *HTTPServer {	
 	r := chi.NewRouter()
 	
 	// Middleware
@@ -74,7 +72,7 @@ func NewHTTPServer(authService *service.AuthService, port, jwtSecret string) *HT
 
 	httpServer := &HTTPServer{
 		authService: authService,
-		logger:      logger,
+		logger:      logger.WithComponent("http-server"),
 		jwtSecret:   jwtSecret,
 		server: &http.Server{
 			Addr:         ":" + port,

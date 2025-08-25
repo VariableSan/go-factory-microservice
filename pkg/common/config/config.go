@@ -11,6 +11,7 @@ type Config struct {
 	Port        string
 	Environment string
 	LogLevel    string
+	LogFormat   string
 	RedisURL    string
 	JaegerURL   string
 }
@@ -21,6 +22,7 @@ func LoadConfig() *Config {
 		Port:        getEnv("PORT", "8080"),
 		Environment: getEnv("ENV", "development"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
+		LogFormat:   getEnv("LOG_FORMAT", "text"),
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
 		JaegerURL:   getEnv("JAEGER_ENDPOINT", "http://localhost:14268"),
 	}

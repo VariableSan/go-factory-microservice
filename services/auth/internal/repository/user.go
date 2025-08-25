@@ -22,37 +22,13 @@ type User struct {
 }
 
 type UserRepository struct {
-	db *database.DB
 	DB *database.DB // Expose for health checks
 }
 
 func NewUserRepository(db *database.DB) *UserRepository {
 	return &UserRepository{
-		db: db,
-		DB: db, // Also expose for external access
+		DB: db,
 	}
-}
-
-// CreateTable creates the users table if it doesn't exist
-func (r *UserRepository) CreateTable(ctx context.Context) error {
-	query := `
-	CREATE TABLE IF NOT EXISTS users (
-		id VARCHAR(36) PRIMARY KEY,
-		email VARCHAR(255) UNIQUE NOT NULL,
-		password VARCHAR(255) NOT NULL,
-		first_name VARCHAR(100),
-		last_name VARCHAR(100),
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		active BOOLEAN DEFAULT true
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-	CREATE INDEX IF NOT EXISTS idx_users_active ON users(active);
-	`
-
-	_, err := r.db.ExecContext(ctx, query)
-	return err
 }
 
 // Create creates a new user
@@ -60,7 +36,7 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 	if user.ID == "" {
 		user.ID = uuid.New().String()
 	}
-	
+
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 
@@ -69,7 +45,7 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := r.DB.ExecContext(ctx, query,
 		user.ID, user.Email, user.Password, user.FirstName, user.LastName,
 		user.CreatedAt, user.UpdatedAt, user.Active,
 	)
@@ -90,7 +66,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*User, e
 		WHERE email = $1 AND active = true
 	`
 
-	err := r.db.QueryRowContext(ctx, query, email).Scan(
+	err := r.DB.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.Active,
 	)
@@ -114,7 +90,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*User, error) 
 		WHERE id = $1 AND active = true
 	`
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.DB.QueryRowContext(ctx, query, id).Scan(
 		&user.ID, &user.Email, &user.Password, &user.FirstName, &user.LastName,
 		&user.CreatedAt, &user.UpdatedAt, &user.Active,
 	)
@@ -139,7 +115,7 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 		WHERE id = $1
 	`
 
-	result, err := r.db.ExecContext(ctx, query, user.ID, user.FirstName, user.LastName, user.UpdatedAt)
+	result, err := r.DB.ExecContext(ctx, query, user.ID, user.FirstName, user.LastName, user.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
@@ -160,7 +136,7 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	query := `UPDATE users SET active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
+	result, err := r.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -182,7 +158,7 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
 
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
+	err := r.DB.QueryRowContext(ctx, query, email).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check email existence: %w", err)
 	}

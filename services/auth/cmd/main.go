@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,13 +11,22 @@ import (
 
 	"github.com/VariableSan/go-factory-microservice/pkg/common/config"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/database"
+	"github.com/VariableSan/go-factory-microservice/pkg/common/logger"
 	"github.com/VariableSan/go-factory-microservice/pkg/common/redis"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/server"
 	"github.com/VariableSan/go-factory-microservice/services/auth/internal/service"
 )
 
 func main() {
-	logger := slog.Default()
+	// Load common configuration
+	commonCfg := config.LoadConfig()
+
+	// Initialize centralized logger
+	logger := logger.NewLogger(logger.Config{
+		ServiceName: "auth-service",
+		Level:       commonCfg.LogLevel,
+		Format:      commonCfg.LogFormat,
+	})
 
 	// Load auth-specific configuration
 	authCfg := config.LoadAuthConfig()
@@ -29,7 +37,7 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
-	
+
 	logger.Info("Connected to database successfully")
 
 	// Initialize Redis client
@@ -44,11 +52,11 @@ func main() {
 	}
 
 	// Initialize auth service
-	authService := service.NewAuthService(db, authCfg.JWTSecret, redisClient, authCfg.TokenExpiry, authCfg.RefreshExpiry)
+	authService := service.NewAuthService(db, authCfg.JWTSecret, redisClient, authCfg.TokenExpiry, authCfg.RefreshExpiry, logger)
 
 	// Create servers
-	httpServer := server.NewHTTPServer(authService, authCfg.HTTPPort, authCfg.JWTSecret)
-	grpcServer, err := server.NewGRPCServer(authService, authCfg.GRPCPort)
+	httpServer := server.NewHTTPServer(authService, authCfg.HTTPPort, authCfg.JWTSecret, logger)
+	grpcServer, err := server.NewGRPCServer(authService, authCfg.GRPCPort, logger)
 	if err != nil {
 		log.Fatalf("Failed to create gRPC server: %v", err)
 	}
